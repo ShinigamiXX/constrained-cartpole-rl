@@ -91,6 +91,30 @@ class DQNControl(ControlAlgorithm):
             return np.random.choice(self.q_network.fc3.out_features)
         else:
             # Exploitation: best action
+            try:
+                # FIX: Flatten the array to ensure it is always 1D (e.g., shape (2,))
+                state_array = np.array(state, dtype=object)
+                state_array = state_array.flatten().astype(np.float32) 
+                
+                # Defensive check for malformed state (e.g., empty array)
+                if state_array.size == 0:
+                    raise ValueError("State array is empty or malformed.")
+                
+                # Secondary check: ensure the state has the expected input size (2 for CartPole)
+                if state_array.shape[0] != self.input_dim:
+                    raise ValueError(f"State array has incorrect size after flattening: {state_array.shape}")
+                    
+                state_tensor = torch.tensor(state_array, dtype=torch.float32).unsqueeze(0)
+                with torch.no_grad():
+                    q_values = self.q_network(state_tensor)
+                return q_values.argmax().item()
+            except Exception as e:
+                # If anything goes wrong, fall back to exploration (random action)
+                print(f"Warning: Failed to get best action (Error: {e}). Falling back to random action. State: {state}.")
+                # Fallback action
+                return np.random.choice(self.q_network.fc3.out_features)
+        '''else:
+            # Exploitation: best action
             #state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
 
             state_array = np.array(state, dtype=np.float32)                             #############
@@ -98,7 +122,7 @@ class DQNControl(ControlAlgorithm):
 
             with torch.no_grad():
                 q_values = self.q_network(state)
-            return q_values.argmax().item()
+            return q_values.argmax().item()'''
             
     '''def get_action(self, state, explore=True):
         state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
