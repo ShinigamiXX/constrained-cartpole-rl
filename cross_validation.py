@@ -260,7 +260,7 @@ def train_dqn(model_class, exploration_strategy_class, config):
         while not done:
             action = controller.get_action(state)  # Get continuous action (motor speed)
             '''next_state, reward, done, _ = env.step(action)'''  #########
-            next_state, reward, terminated, truncated, _ = env.step(action)
+            next_state, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
 
             # --- Add this check for debugging ---
@@ -362,7 +362,8 @@ def train_dqn_until_overfitting(model_class, exploration_strategy_class, config,
         t = 0
         while not done:
             action = controller.get_action(state)
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
             controller.update(state, action, reward, next_state, done)
             state = next_state
             episode_reward += reward
@@ -505,7 +506,8 @@ def evaluate_agent(controller, eval_env, num_episodes=10):
         while not done:
             # Set explore=False to disable exploration during evaluation
             action = controller.get_action(state, explore=False)
-            next_state, reward, done, _ = eval_env.step(action)
+            next_state, reward, terminated, truncated, info = eval_env.step(action)
+            done = terminated or truncated
             episode_reward += reward
             state = next_state
         total_reward += episode_reward

@@ -79,6 +79,7 @@ class DQNControl(ControlAlgorithm):
         self.gamma = control_params['discount_factor']
         self.epsilon = control_params['epsilon']
         self.min_epsilon = control_params.get('min_epsilon', 0.01)
+        self.input_dim = state_dim        ############  
         self.decay_rate = control_params.get('decay_rate', 0.995)
         self.update_target_steps = control_params.get('update_target_steps', 1000)
         self.steps = 0
