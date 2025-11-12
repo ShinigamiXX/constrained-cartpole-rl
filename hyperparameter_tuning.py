@@ -90,7 +90,8 @@ def tune_hyperparameters_dqn(model_class, exploration_strategy_class, config):
     def objective(learning_rate, discount_factor, epsilon, batch_size, buffer_size):
         # Initialize environment
         env = GymWrapper(gym.make('CartPole-v1'))
-        state_dim = env.env.observation_space.shape[0]
+        #state_dim = env.env.observation_space.shape[0]
+        state_dim = env.observation_space[0]
         action_dim = env.env.action_space.n
         exploration_strategy = exploration_strategy_class(epsilon=epsilon)
         '''control_params = {
@@ -119,11 +120,12 @@ def tune_hyperparameters_dqn(model_class, exploration_strategy_class, config):
         total_reward = 0
         # Training loop (simplified for tuning purposes)
         for episode in range(config.NUM_EPISODES):
-            state = env.reset()
+            state, _ = env.reset()
             episode_reward = 0
             for t in range(config.MAX_STEPS):
                 action = controller.get_action(state)
-                next_state, reward, done, _ = env.step(action)
+                next_state, reward, terminated, truncated, info = env.step(action)
+                done = terminated or truncated
                 controller.update(state, action, reward, next_state, done)
                 state = next_state
                 episode_reward += reward
