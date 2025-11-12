@@ -231,8 +231,8 @@ def cross_validation_qlearning(model_class, exploration_strategy_class, config, 
 
 def train_dqn(model_class, exploration_strategy_class, config):
     # Load your custom environment
-    env = GymWrapper(gym.make('CustomCartPoleEnv-v0'))  # Use your custom CartPole env
-    eval_env = GymWrapper(gym.make('CustomCartPoleEnv-v0'))  # Same for evaluation
+    env = GymWrapper(gym.make('CustomCartPoleEnv-v0', dtype=np.float32))  # Use your custom CartPole env
+    eval_env = GymWrapper(gym.make('CustomCartPoleEnv-v0', dtype=np.float32))  # Same for evaluation
 
     # Updated dimensions: state_dim now only includes pole_angle and pole_velocity (2 dimensions), action_dim is motor speed (1 dimension)
     state_dim = 2  # pole_angle, pole_velocity
@@ -500,7 +500,7 @@ def train_sarsa(model_class, exploration_strategy_class, config):
 def evaluate_agent(controller, eval_env, num_episodes=10):
     total_reward = 0
     for _ in range(num_episodes):
-        state = eval_env.reset()
+        state,_ = eval_env.reset()
         done = False
         episode_reward = 0
         while not done:
