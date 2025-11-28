@@ -18,7 +18,15 @@ def performance_based_lr_update(episode, recent_rewards, control_params, current
     
     if len(recent_rewards) >= patience:
         avg_reward_recent = np.mean(recent_rewards[-patience:])
-        avg_reward_past = np.mean(recent_rewards[:-patience])
+
+        #avg_reward_past = np.mean(recent_rewards[:-patience])
+
+        past_rewards = recent_rewards[:-patience]
+        if len(past_rewards) == 0:
+            return current_lr # Or use a default value for avg_reward_past
+
+        avg_reward_past = np.mean(past_rewards)
+        
 
         if avg_reward_recent < avg_reward_past + min_delta:
             new_lr = max(current_lr * decay_factor, min_lr)
