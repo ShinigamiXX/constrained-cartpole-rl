@@ -243,8 +243,11 @@ def train_dqn(model_class, exploration_strategy_class, config):
     eval_env = GymWrapper(gym.make('CustomCartPoleEnv-v0'))  # Same for evaluation
 
     # Updated dimensions: state_dim now only includes pole_angle and pole_velocity (2 dimensions), action_dim is motor speed (1 dimension)
-    state_dim = 2  # pole_angle, pole_velocity
-    action_dim = 1  # motor speed (continuous action)
+    #state_dim = env.observation_space[0]  # pole_angle, pole_velocity
+    #action_dim = env.env.action_space.n  # motor speed (continuous action)
+
+    state_dim = env.env.observation_space.shape[0]
+    action_dim = env.env.action_space.n
 
     # Initialize DQN controller
     controller = model_class(config.CONTROL_PARAMS, exploration_strategy_class(config.CONTROL_PARAMS['epsilon']), state_dim, action_dim)
