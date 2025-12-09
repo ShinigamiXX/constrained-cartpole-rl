@@ -35,7 +35,7 @@ def tune_hyperparameters_qlearning(model_class, exploration_strategy_class, conf
 
         #controller = model_class(control_params, exploration_strategy)
 
-        controller = model_class(config.CONTROL_PARAMS, exploration_strategy, state_dim, action_dim)
+        controller = model_class(config.CONTROL_PARAMS, exploration_strategy)
 
         '''controller = model_class(
         control_params={'learning_rate': learning_rate, 'discount_factor': discount_factor},
@@ -45,11 +45,13 @@ def tune_hyperparameters_qlearning(model_class, exploration_strategy_class, conf
         total_reward = 0
         # Training loop (simplified for tuning purposes)
         for episode in range(config.NUM_EPISODES):
-            state = env.reset()
+            state, _ = env.reset()
             episode_reward = 0
             for t in range(config.MAX_STEPS):
                 action = controller.get_action(state)
-                next_state, reward, done, _ = env.step(action)
+                #next_state, reward, done, _ = env.step(action)
+                next_state, reward, terminated, truncated, info = env.step(action)
+                done = terminated or truncated
                 controller.update(state, action, reward, next_state, done)
                 state = next_state
                 episode_reward += reward
@@ -185,11 +187,13 @@ def tune_hyperparameters_sarsa(model_class, exploration_strategy_class, config):
         total_reward = 0
         # Training loop (simplified for tuning purposes)
         for episode in range(config.NUM_EPISODES):
-            state = env.reset()
+            state, _ = env.reset()
             action = controller.get_action(state)
             episode_reward = 0
             for t in range(config.MAX_STEPS):
-                next_state, reward, done, _ = env.step(action)
+                #next_state, reward, done, _ = env.step(action)
+                next_state, reward, terminated, truncated, info = env.step(action)
+                done = terminated or truncated
                 next_action = controller.get_action(next_state)
                 controller.update(state, action, reward, next_state, next_action, done)
                 state = next_state
