@@ -356,10 +356,15 @@ class SarsaControl(ControlAlgorithm):
         return bins
 
     def _discretize_state(self, state):
-        x, x_dot, theta, theta_dot = state
-        state_discrete = (
+        #x, x_dot, theta, theta_dot = state
+        theta, theta_dot = state
+        '''state_discrete = (
             np.digitize(x, self.state_bins['x']) - 1,
             np.digitize(x_dot, self.state_bins['x_dot']) - 1,
+            np.digitize(theta, self.state_bins['theta']) - 1,
+            np.digitize(theta_dot, self.state_bins['theta_dot']) - 1
+        )'''
+        state_discrete = (
             np.digitize(theta, self.state_bins['theta']) - 1,
             np.digitize(theta_dot, self.state_bins['theta_dot']) - 1
         )

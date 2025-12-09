@@ -48,6 +48,7 @@ def cross_validation_qlearning(model_class, exploration_strategy_class, config, 
 
         # Reset environment and logger for each fold
         env = GymWrapper(gym.make('CartPole-v1'))
+        #env = GymWrapper(gym.make('CustomCartPoleEnv-v0'))
         exploration_strategy = exploration_strategy_class(epsilon=config.CONTROL_PARAMS['epsilon'])
         controller = model_class(config.CONTROL_PARAMS, exploration_strategy)
         logger = DataLogger(config.LOG_PARAMS)
@@ -59,13 +60,15 @@ def cross_validation_qlearning(model_class, exploration_strategy_class, config, 
 
         # Training loop for the fold
         for episode in range(config.NUM_EPISODES):
-            state = env.reset()
+            state, _ = env.reset()
             episode_reward = 0
             episodes_completed += 1  # Increment the episode counter
 
             for t in range(config.MAX_STEPS):
                 action = controller.get_action(state)
-                next_state, reward, done, _ = env.step(action)
+                #next_state, reward, done, _ = env.step(action)
+                next_state, reward, terminated, truncated, info = env.step(action)
+                done = terminated or truncated
                 controller.update(state, action, reward, next_state, done)
                 logger.log(state, action, reward, next_state)
 
@@ -367,7 +370,7 @@ def train_dqn_until_overfitting(model_class, exploration_strategy_class, config,
     evaluation_rewards = []  # List to store evaluation rewards
 
     for episode in range(max_episodes):
-        state = env.reset()
+        state, _ = env.reset()
         episode_reward = 0
         done = False
         t = 0
@@ -454,12 +457,14 @@ def train_sarsa(model_class, exploration_strategy_class, config):
     reward_history = []
 
     for episode in range(config.NUM_EPISODES_SARSA):
-        state = env.reset()
+        state, _ = env.reset()
         action = controller.get_action(state)  # Select initial action
         episode_reward = 0
 
         for t in range(config.MAX_STEPS):
-            next_state, reward, done, _ = env.step(action)
+            #next_state, reward, done, _ = env.step(action)
+            next_state, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
             next_action = controller.get_action(next_state)  # Select next action
             
             controller.update(state, action, reward, next_state, next_action, done)
