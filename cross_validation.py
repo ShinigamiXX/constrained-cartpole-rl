@@ -140,7 +140,7 @@ def cross_validation_qlearning(model_class, exploration_strategy_class, config, 
 
     print("Cross-Validation Complete.")
     print(f"Best Average Reward across all folds: {best_avg_reward}")
-    return best_avg_reward
+    return best_avg_reward, controller
 
 '''def train_dqn(model_class, exploration_strategy_class, config):
     env = GymWrapper(gym.make('CartPole-v1'))
@@ -560,9 +560,11 @@ def plot_rewards(training_rewards, evaluation_rewards, eval_interval, save_path=
 
 def run_cross_validation_or_training(algorithm='qlearning'):
     if algorithm == 'qlearning':
-        best_reward = cross_validation_qlearning(QLearningControl, EpsilonGreedyStrategy, config)
+        best_reward, controller = cross_validation_qlearning(QLearningControl, EpsilonGreedyStrategy, config)
         print(f"Best Average Reward from Q-Learning Cross-Validation: {best_reward}")
-        return None  # or return best_reward if you want
+        if controller is None:
+           print("Empty")
+        return controller  # or return best_reward if you want
     elif algorithm == 'dqn':
         #controller = train_dqn_until_overfitting(DQNControl, EpsilonGreedyStrategy, config, max_episodes=5000)
         controller = train_dqn(DQNControl, EpsilonGreedyStrategy, config)
