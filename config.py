@@ -1,6 +1,7 @@
 STATE_MODE = '2D'  # Default
 STOP_LOGIC = 'fixed' # Default
 STATE_DIM = 2
+
 # Simulation parameters
 NUM_EPISODES = 1000
 NUM_EPISODES_DQN = 500
