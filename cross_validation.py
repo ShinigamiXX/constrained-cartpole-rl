@@ -142,104 +142,6 @@ def cross_validation_qlearning(model_class, exploration_strategy_class, config, 
     print(f"Best Average Reward across all folds: {best_avg_reward}")
     return best_avg_reward, controller
 
-'''def train_dqn(model_class, exploration_strategy_class, config):
-    env = GymWrapper(gym.make('CartPole-v1'))
-    eval_env = GymWrapper(gym.make('CartPole-v1'))
-    state_dim = env.env.observation_space.shape[0]
-    action_dim = env.env.action_space.n
-    controller = model_class(config.CONTROL_PARAMS, exploration_strategy_class(config.CONTROL_PARAMS['epsilon']), state_dim, action_dim)
-    logger = DataLogger(config.LOG_PARAMS)
-
-    optimizer_name = 'Adam'
-
-    patience = 50  # Number of episodes to wait before stopping if no improvement
-    min_delta = 1.0  # Minimum change to qualify as an improvement
-    best_avg_reward = -np.inf
-    patience_counter = 0
-    recent_rewards = []
-    training_rewards = []  # List to store training rewards
-    evaluation_rewards = []  # List to store evaluation rewards
-
-    for episode in range(config.NUM_EPISODES):
-        state = env.reset()
-        episode_reward = 0
-        done = False
-        t=0
-        while not done:
-            action = controller.get_action(state)
-            next_state, reward, done, _ = env.step(action)
-            controller.update(state, action, reward, next_state, done)
-            state = next_state
-            episode_reward += reward
-            t+=1
-
-        # Decay epsilon after the episode
-        controller.decay_epsilon()
-
-        logger.log_episode(episode, episode_reward, t + 1)
-        training_rewards.append(episode_reward)
-
-        recent_rewards.append(episode_reward)
-        if len(recent_rewards) > patience:
-            recent_rewards.pop(0)
-
-        # Calculate average reward over the last `patience` episodes
-        avg_reward = np.mean(recent_rewards)
-
-        # Check for improvement
-        if avg_reward > best_avg_reward + min_delta:
-            best_avg_reward = avg_reward
-            patience_counter = 0  # Reset the patience counter if there's an improvement
-        else:
-            patience_counter += 1  # Increment the patience counter if no improvement
-
-        # Output progress every few episodes
-        if (episode + 1) % 10 == 0:
-            eval_reward = evaluate_agent(controller, eval_env)
-            evaluation_rewards.append(eval_reward)  # Adjust the frequency as needed
-            print(f"Episode {episode + 1}/{config.NUM_EPISODES} - Training Reward: {episode_reward:.2f} - Epsilon: {controller.epsilon:.4f} - Avg Reward: {avg_reward:.2f} - Evaluation Reward: {eval_reward:.2f}")
-
-            logger.log_rewards(episode + 1, episode_reward, eval_reward)
-        # Early stopping check
-        #if patience_counter >= patience:
-            #print(f"Early stopping at episode {episode + 1} with best average reward: {best_avg_reward:.2f}")
-            #break
-        # Learning Rate update if performance drops
-        current_lr = controller.optimizer.param_groups[0]['lr']
-        new_lr = performance_based_lr_update(episode, recent_rewards, config.CONTROL_PARAMS, current_lr)
-        if new_lr != current_lr:
-            controller.update_learning_rate(new_lr)
-
-    print("DQN Training Complete.")
-    env.close()
-
-    # Log the model along with its hyperparameters
-    model_info = {
-        'model': controller,
-        'hyperparameters': {
-            'learning_rate': config.CONTROL_PARAMS['learning_rate'],
-            'discount_factor': config.CONTROL_PARAMS['discount_factor'],
-            'epsilon': config.CONTROL_PARAMS['epsilon'],
-            'min_epsilon': config.CONTROL_PARAMS.get('min_epsilon', 0.01),
-            'decay_rate': config.CONTROL_PARAMS.get('decay_rate', 0.995),
-            'buffer_size': config.CONTROL_PARAMS.get('buffer_size', 10000),
-            'batch_size': config.CONTROL_PARAMS.get('batch_size', 64),
-            'update_target_steps': config.CONTROL_PARAMS.get('update_target_steps', 1000),
-            'optimizer': optimizer_name  # Log the optimizer name
-        }
-    }
-
-    # Save the model and hyperparameters together
-    eval_interval = 10  # Example value, adjust based on your needs
-    save_path = config.LOG_PARAMS['save_path']
-    os.makedirs(save_path, exist_ok=True)
-    plot_rewards(training_rewards, evaluation_rewards, eval_interval, save_path=save_path)
-    joblib.dump(model_info, 'trained_dqn_model_with_params.pkl')
-
-    logger.save_logs_as_csv(state='train')
-    logger.save_metrics(state='train')
-    return controller'''
-
 def train_dqn(model_class, exploration_strategy_class, config):
     # Load your custom environment
     env = GymWrapper(gym.make('CustomCartPoleEnv-v0'))  # Use your custom CartPole env
@@ -558,7 +460,7 @@ def plot_rewards(training_rewards, evaluation_rewards, eval_interval, save_path=
         plt.savefig(plot_path)
     plt.show()
 
-def run_cross_validation_or_training(algorithm='qlearning'):
+'''def run_cross_validation_or_training(algorithm='qlearning'):
     if algorithm == 'qlearning':
         best_reward, controller = cross_validation_qlearning(QLearningControl, EpsilonGreedyStrategy, config)
         print(f"Best Average Reward from Q-Learning Cross-Validation: {best_reward}")
@@ -575,7 +477,44 @@ def run_cross_validation_or_training(algorithm='qlearning'):
         print(f"SARSA Training completed. You can now test the agent.")
         return controller
     else:
-        raise ValueError("Unknown algorithm specified. Use 'qlearning' or 'dqn'.")
+        raise ValueError("Unknown algorithm specified. Use 'qlearning' or 'dqn'.")'''
+  
+def run_cross_validation_or_training(algorithm, mode, stop_logic):
+    # 1. Update global config variables based on dropdown choices
+    config.STATE_MODE = mode
+    config.STOP_LOGIC = stop_logic
+    config.STATE_DIM = 2 if mode == '2D' else 4
+
+    print(f"--- Configuration Updated ---")
+    print(f"Algorithm: {algorithm} | Mode: {config.STATE_MODE} | State Dim: {config.STATE_DIM}")
+
+    # 2. Q-LEARNING BLOCK
+    if algorithm == 'qlearning':
+        # Uses your existing CV logic
+        best_reward, controller = cross_validation_qlearning(QLearningControl, EpsilonGreedyStrategy, config)
+        print(f"Best Average Reward from Q-Learning Cross-Validation: {best_reward}")
+        return controller
+
+    # 3. DQN BLOCK
+    elif algorithm == 'dqn':
+        # Check stop_logic from dropdown to decide which function to run
+        if config.STOP_LOGIC == 'overfitting':
+            controller = train_dqn_until_overfitting(DQNControl, EpsilonGreedyStrategy, config)
+        else:
+            controller = train_dqn(DQNControl, EpsilonGreedyStrategy, config)
+            
+        print(f"DQN Training completed.")
+        return controller
+
+    # 4. SARSA BLOCK
+    elif algorithm == 'sarsa':
+        # Sarsa will now use the dynamic bins we set up earlier
+        controller = train_sarsa(SarsaControl, EpsilonGreedyStrategy, config)
+        print(f"SARSA Training completed.")
+        return controller
+
+    else:
+        raise ValueError(f"Unknown algorithm: {algorithm}")
 
 
 def plot_sarsa_training(logger, config, save_path=None):

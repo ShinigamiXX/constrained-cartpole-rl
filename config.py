@@ -1,3 +1,6 @@
+STATE_MODE = '2D'  # Default
+STOP_LOGIC = 'fixed' # Default
+STATE_DIM = 2
 # Simulation parameters
 NUM_EPISODES = 1000
 NUM_EPISODES_DQN = 500
@@ -5,14 +8,6 @@ NUM_EPISODES_SARSA=2000
 MAX_STEPS = 500
 
 # Control algorithm parameters
-'''CONTROL_PARAMS = {
-    'learning_rate': 0.1,
-    'discount_factor': 0.99,
-    'epsilon': 0.1,
-    'patience': 10,          # Number of episodes to wait before reducing learning rate if no improvement
-    'min_delta': 0.01,       # Minimum change in reward to be considered an improvement
-    'decay_factor': 0.9      # Factor by which to multiply the learning rate when performance plateaus
-}'''
 
 CONTROL_PARAMS = {
     'learning_rate': 0.001,

@@ -25,19 +25,6 @@ class ControlAlgorithm(ABC):
     def _discretize_state(self, state):
         pass
 
-'''class DQNNetwork(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super(DQNNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, output_dim)
-
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        return self.fc3(x)
-        '''
-
 class DQNNetwork(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(DQNNetwork, self).__init__()
@@ -114,27 +101,6 @@ class DQNControl(ControlAlgorithm):
                 print(f"Warning: Failed to get best action (Error: {e}). Falling back to random action. State: {state}.")
                 # Fallback action
                 return np.random.choice(self.q_network.fc3.out_features)
-        '''else:
-            # Exploitation: best action
-            #state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-
-            state_array = np.array(state, dtype=np.float32)                             #############
-            state = torch.tensor(state_array, dtype=torch.float32).unsqueeze(0)         #############
-
-            with torch.no_grad():
-                q_values = self.q_network(state)
-            return q_values.argmax().item()'''
-            
-    '''def get_action(self, state, explore=True):
-        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-        with torch.no_grad():
-            q_values = self.q_network(state)
-        action = q_values.squeeze().item()  # Motor speed as a continuous value
-
-        if explore and np.random.rand() < self.epsilon:
-            action += np.random.uniform(-0.1, 0.1)
-
-        return np.clip(action, -1.0, 1.0)'''
 
     def update(self, state, action, reward, next_state, done):
         # Add experience to the replay buffer
@@ -184,37 +150,6 @@ class DQNControl(ControlAlgorithm):
             self.target_network.load_state_dict(self.q_network.state_dict())
 
         self.steps += 1
-    '''def update(self, state, action, reward, next_state, done):
-        self.replay_buffer.append((state, action, reward, next_state, done))
-
-        if len(self.replay_buffer) < self.batch_size:
-            return
-
-        experiences = random.sample(self.replay_buffer, self.batch_size)
-        states, actions, rewards, next_states, dones = zip(*experiences)
-
-        states = torch.tensor(states, dtype=torch.float32)
-        actions = torch.tensor(actions, dtype=torch.float32).unsqueeze(1)
-        rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1)
-        next_states = torch.tensor(next_states, dtype=torch.float32)
-        dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1)
-
-        current_q_values = self.q_network(states).gather(1, actions.long())
-        with torch.no_grad():
-            max_next_q_values = self.target_network(next_states).max(1)[0].unsqueeze(1)
-
-        target_q_values = rewards + (self.gamma * max_next_q_values * (1 - dones))
-
-        loss = self.criterion(current_q_values, target_q_values)
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        if self.steps % self.update_target_steps == 0:
-            self.target_network.load_state_dict(self.q_network.state_dict())
-
-        self.steps += 1'''
 
     def decay_epsilon(self):
         """Decay the epsilon value over time."""
@@ -233,22 +168,11 @@ class QLearningControl(ControlAlgorithm):
         self.decay_rate = control_params.get('decay_rate', 0.995)
 
     def get_action(self, state, epsilon=0.1):
-        """
-        Selects an action using epsilon-greedy strategy.
-
-        Args:
-            state: The current state.
-            epsilon: Probability of choosing a random action (exploration).
-
-        Returns:
-            action: The selected action.
-        """
+        
         state = self._discretize_state(state)
 
         if state not in self.q_table:
             self.q_table[state] = [0, 0]  # Initialize Q-values for unseen state
-
-        #action = self.exploration_strategy.select_action(self.q_table[state])
         
         if np.random.rand() < self.epsilon:
             action = np.random.choice(len(self.q_table[state]))  # Exploration: random action
@@ -283,59 +207,6 @@ class QLearningControl(ControlAlgorithm):
     def _discretize_state(self, state):
         return tuple(np.round(x, 1) for x in state)
 
-
-'''class SarsaControl(ControlAlgorithm):
-    def __init__(self, control_params, exploration_strategy):
-        super().__init__(control_params, exploration_strategy)
-        self.q_table = {}
-        self.state_bins = self._create_bins()  # Create bins for discretization
-
-    def _create_bins(self):
-        # Example binning for CartPole state
-        # Adjust the number of bins and limits based on your environment's state space
-        bins = {
-            'x': np.linspace(-4.8, 4.8, 10),  # Cart position
-            'x_dot': np.linspace(-3.0, 3.0, 10),  # Cart velocity
-            'theta': np.linspace(-0.418, 0.418, 10),  # Pole angle (in radians)
-            'theta_dot': np.linspace(-2.0, 2.0, 10)  # Pole angular velocity
-        }
-        return bins
-
-    def _discretize_state(self, state):
-        # Discretize the state into bins
-        x, x_dot, theta, theta_dot = state
-        state_discrete = (
-            np.digitize(x, self.state_bins['x']) - 1,
-            np.digitize(x_dot, self.state_bins['x_dot']) - 1,
-            np.digitize(theta, self.state_bins['theta']) - 1,
-            np.digitize(theta_dot, self.state_bins['theta_dot']) - 1
-        )
-        return state_discrete
-
-    def get_action(self, state):
-        state = self._discretize_state(state)
-
-        if state not in self.q_table:
-            self.q_table[state] = [0, 0]  # Initialize Q-values for unseen state
-
-        action = self.exploration_strategy.select_action(self.q_table[state])
-        return action
-
-    def update(self, state, action, reward, next_state, next_action, done):
-        state = self._discretize_state(state)
-        next_state = self._discretize_state(next_state)
-
-        if state not in self.q_table:
-            self.q_table[state] = [0, 0]
-        if next_state not in self.q_table:
-            self.q_table[next_state] = [0, 0]
-
-        # SARSA update rule
-        current_q = self.q_table[state][action]
-        next_q = self.q_table[next_state][next_action]
-        new_q = current_q + self.params['learning_rate'] * (reward + self.params['discount_factor'] * next_q - current_q)
-        self.q_table[state][action] = new_q'''
-
 class SarsaControl(ControlAlgorithm):
     def __init__(self, control_params, exploration_strategy):
         super().__init__(control_params, exploration_strategy)
@@ -355,20 +226,39 @@ class SarsaControl(ControlAlgorithm):
         }
         return bins
 
-    def _discretize_state(self, state):
+    '''def _discretize_state(self, state):
         #x, x_dot, theta, theta_dot = state
         theta, theta_dot = state
-        '''state_discrete = (
+        state_discrete = (
             np.digitize(x, self.state_bins['x']) - 1,
             np.digitize(x_dot, self.state_bins['x_dot']) - 1,
             np.digitize(theta, self.state_bins['theta']) - 1,
             np.digitize(theta_dot, self.state_bins['theta_dot']) - 1
-        )'''
+        )
         state_discrete = (
             np.digitize(theta, self.state_bins['theta']) - 1,
             np.digitize(theta_dot, self.state_bins['theta_dot']) - 1
         )
-        return state_discrete
+        return state_discrete'''
+
+    def _discretize_state(self, state):
+    # Detect if we are looking at 2D or 4D
+      if len(state) == 2:
+        theta, theta_dot = state
+        state_discrete = (
+            np.digitize(theta, self.state_bins['theta']) - 1,
+            np.digitize(theta_dot, self.state_bins['theta_dot']) - 1
+        )
+      else:
+        # 4D Mode
+        x, x_dot, theta, theta_dot = state
+        state_discrete = (
+            np.digitize(x, self.state_bins['x']) - 1,
+            np.digitize(x_dot, self.state_bins['x_dot']) - 1,
+            np.digitize(theta, self.state_bins['theta']) - 1,
+            np.digitize(theta_dot, self.state_bins['theta_dot']) - 1
+        )
+      return state_discrete
 
     def get_action(self, state):
         state = self._discretize_state(state)

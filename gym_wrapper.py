@@ -1,73 +1,3 @@
-'''import numpy as np
-import gymnasium as gym
-from gymnasium.spaces import Box
-from gymnasium.envs.registration import register
-
-# Register the custom environment
-register(
-    id='CustomCartPoleEnv-v0',
-    entry_point='gym_wrapper:CustomCartPoleEnv',
-    max_episode_steps=500,
-)
-
-class CustomCartPoleEnv(gym.Env):
-    # This class is a placeholder for your environment and should contain the
-    # physics simulation, as you have it implemented. The important thing is
-    # that its step method returns the 5-element tuple.
-    def __init__(self):
-        super(CustomCartPoleEnv, self).__init__()
-        # ... (rest of your __init__ code)
-        self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
-        self.observation_space = gym.spaces.Box(low=np.array([-2.4, -np.inf, -0.418, -np.inf]),
-                                                high=np.array([2.4, np.inf, 0.418, np.inf]),
-                                                dtype=np.float32)
-        # ... (rest of your __init__ code)
-        self.state = None
-        self.step_count = 0
-
-    def step(self, action):
-        # ... (your step logic here)
-        # This function must return the 5-element gymnasium tuple.
-        next_state = np.array(self.state, dtype=np.float32)
-        reward = 1.0 if not terminated else 0.0
-        return next_state, reward, terminated, truncated, {}
-
-    def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
-        # ... (your reset logic here)
-        state = np.random.uniform(low=-0.05, high=0.05, size=(4,))
-        self.state = state
-        self.step_count = 0
-        return np.array(self.state, dtype=np.float32), {}
-
-
-class GymWrapper:
-    def __init__(self, env):
-        self.env = env
-        # Set the observation space of the wrapper to match the filtered state
-        # The shape should be (2,) for pole angle and angular velocity
-        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32)
-        self.action_space = self.env.action_space
-        
-    def _filter_state(self, state):
-        # Keep only the pole angle and angular velocity
-        return np.array(state[2:4], dtype=np.float32)
-
-    def reset(self):
-        state, info = self.env.reset()
-        return self._filter_state(state), info
-
-    def step(self, action):
-        next_state, reward, terminated, truncated, info = self.env.step(action)
-        filtered_state = self._filter_state(next_state)
-        return filtered_state, reward, terminated, truncated, info
-
-    def render(self):
-        return self.env.render()
-
-    def close(self):
-        self.env.close()'''
-
 import numpy as np
 import gymnasium as gym
 from gymnasium.spaces import Box
@@ -159,23 +89,66 @@ class CustomCartPoleEnv(gym.Env):
 
 # The wrapper class
 class GymWrapper:
-    def __init__(self, env):
+    '''def __init__(self, env, mode='2D'):
         self.env = env
+        self.mode = mode
         self.observation_space = self._filter_state(self.env.observation_space.sample()).shape
-        self.action_space = self.env.action_space
-        
-    def _filter_state(self, state):
-        # Keep only the pole angle and angular velocity
-        return np.array(state[2:4], dtype=np.float32)
+        self.action_space = self.env.action_space'''
 
-    def reset(self):
+    def __init__(self, env, mode='2D'):
+        self.env = env
+        self.mode = mode
+        
+        # We need to define a proper Gymnasium Box space so 
+        # that the agents can "read" the limits and shape.
+        if self.mode == '2D':
+            # Angle and Angular Velocity limits
+            low = np.array([-0.418, -np.inf], dtype=np.float32)
+            high = np.array([0.418, np.inf], dtype=np.float32)
+        else:
+            # Full 4D limits (Cart Pos, Cart Vel, Angle, Angle Vel)
+            low = np.array([-2.4, -np.inf, -0.418, -np.inf], dtype=np.float32)
+            high = np.array([2.4, np.inf, 0.418, np.inf], dtype=np.float32)
+            
+        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
+        self.action_space = self.env.action_space
+
+    def _filter_state(self, state):
+        if self.mode == '2D':
+            return np.array(state[2:4], dtype=np.float32)  # Keep only the pole angle and angular velocity
+        return np.array(state, dtype=np.float32)
+
+    '''def reset(self):
         state, info = self.env.reset()
+        return self._filter_state(state), info'''
+
+    def reset(self, seed=None, options=None):
+        # Unpack the Gymnasium 0.26+ reset tuple
+        state, info = self.env.reset(seed=seed, options=options)
         return self._filter_state(state), info
 
-    def step(self, action):
+    '''def step(self, action):
         next_state, reward, terminated, truncated, info = self.env.step(action)
-        filtered_state = self._filter_state(next_state)
-        return filtered_state, reward, terminated, truncated, info
+        return self._filter_state(next_state), reward, terminated, truncated, info'''
+
+    def step(self, action):
+    # If the agent sends 0, we translate to -1.0 (Left)
+    # If the agent sends 1, we translate to 1.0 (Right)
+    # This works for Q-Learning, SARSA, and DQN
+      if isinstance(action, (int, np.integer)):
+        # Formula: (0 * 2) - 1 = -1.0 | (1 * 2) - 1 = 1.0
+        continuous_speed = float(action * 2.0 - 1.0)
+      else:
+        # If the action is already a float (from a different agent)
+        continuous_speed = action
+
+      # Wrap in a numpy array as expected by the Box action space
+      act_for_env = np.array([continuous_speed], dtype=np.float32)
+
+      # Call the original environment
+      next_state, reward, terminated, truncated, info = self.env.step(act_for_env)
+    
+      return self._filter_state(next_state), reward, terminated, truncated, info
 
     def render(self):
         return self.env.render()
