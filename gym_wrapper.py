@@ -95,9 +95,10 @@ class GymWrapper:
         self.observation_space = self._filter_state(self.env.observation_space.sample()).shape
         self.action_space = self.env.action_space'''
 
-    def __init__(self, env, mode='2D'):
+    def __init__(self, env, mode='2D', action_mode='discrete'):
         self.env = env
         self.mode = mode
+        self.action_mode= action_mode
         
         # We need to define a proper Gymnasium Box space so 
         # that the agents can "read" the limits and shape.
@@ -111,7 +112,14 @@ class GymWrapper:
             high = np.array([2.4, np.inf, 0.418, np.inf], dtype=np.float32)
             
         self.observation_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
-        self.action_space = self.env.action_space
+        #self.action_space = self.env.action_space
+        # 2. Define Action Space (Output)
+        if self.action_mode == 'discrete':
+            # This tells Q-Learning/SARSA/DQN there are 2 choices: 0 and 1
+            self.action_space = gym.spaces.Discrete(2)
+        else:
+            # This tells a Continuous agent (like PPO) it can use range [-1, 1]
+            self.action_space = self.env.action_space
 
     def _filter_state(self, state):
         if self.mode == '2D':
@@ -132,15 +140,15 @@ class GymWrapper:
         return self._filter_state(next_state), reward, terminated, truncated, info'''
 
     def step(self, action):
-    # If the agent sends 0, we translate to -1.0 (Left)
-    # If the agent sends 1, we translate to 1.0 (Right)
-    # This works for Q-Learning, SARSA, and DQN
-      if isinstance(action, (int, np.integer)):
-        # Formula: (0 * 2) - 1 = -1.0 | (1 * 2) - 1 = 1.0
-        continuous_speed = float(action * 2.0 - 1.0)
+    # 3. Handle Action Mapping
+      if self.action_mode == 'discrete':
+        # Map 0 -> -1.0 and 1 -> 1.0
+        # We handle it safely regardless of if action is int or array([int])
+        val = int(action) if not isinstance(action, np.ndarray) else int(action.item())
+        continuous_speed = float(val * 2.0 - 1.0)
       else:
-        # If the action is already a float (from a different agent)
-        continuous_speed = action
+        # For continuous, just ensure it's a float
+        continuous_speed = float(action)  
 
       # Wrap in a numpy array as expected by the Box action space
       act_for_env = np.array([continuous_speed], dtype=np.float32)
@@ -149,6 +157,16 @@ class GymWrapper:
       next_state, reward, terminated, truncated, info = self.env.step(act_for_env)
     
       return self._filter_state(next_state), reward, terminated, truncated, info
+
+      '''# If the agent sends 0, we translate to -1.0 (Left)
+    # If the agent sends 1, we translate to 1.0 (Right)
+    # This works for Q-Learning, SARSA, and DQN
+      if isinstance(action, (int, np.integer)):
+        # Formula: (0 * 2) - 1 = -1.0 | (1 * 2) - 1 = 1.0
+        continuous_speed = float(action * 2.0 - 1.0)
+      else:
+        # If the action is already a float (from a different agent)
+        continuous_speed = action'''
 
     def render(self):
         return self.env.render()
